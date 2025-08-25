@@ -35,6 +35,7 @@
     </div>
 
     <script>
+        const API_TOKEN = '95411b80d0d54248a859a01061f60d73';
         const leagueSelect = document.getElementById('league-select');
         const resultsContainer = document.getElementById('results-container');
         const scoresContainer = document.getElementById('scores-container');
@@ -50,34 +51,48 @@
         });
 
         async function fetchLeagueData(leagueCode) {
+            API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/standings`;
+
             try {
-                const response = await fetch(`api.php?league=${leagueCode}`);
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'X-Auth-Token': API_TOKEN
+                    }
+                });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
-
                 displayStandings(data);
+
             } catch (error) {
-                resultsContainer.innerHTML = `<p class="text-red-500">Error al cargar los datos: ${error.message}. Por favor, inténtalo de nuevo más tarde.</p>`;
+                console.error('Error fetching data:', error);
             }
         }
 
         async function fetchScoreData(leagueCode) {
+            API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/scorers`;
+
             try {
-                const response = await fetch(`goleadores.php?league=${leagueCode}`);
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'X-Auth-Token': API_TOKEN
+                    }
+                });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
-
                 displayScore(data);
+
             } catch (error) {
-                scoresContainer.innerHTML = `<p class="text-red-500">Error al cargar los datos: ${error.message}. Por favor, inténtalo de nuevo más tarde.</p>`;
+                console.error('Error fetching data:', error);
             }
         }
 
@@ -104,7 +119,7 @@
                 standings.forEach(team => {
                     tableHtml += `<tr class="border-b border-gray-200 hover:bg-gray-100">`;
                     tableHtml += `<td class="py-3 px-6 text-left whitespace-nowrap">${team.position}</td>`;
-                    tableHtml += `<td class="py-3 px-6 text-left flex items-center"><img src="${team.team.crest}" alt="${team.team.name}" class="w-6 h-6 mr-2"> ${team.team.name}</td>`;
+                    tableHtml += `<td class="py-3 px-6 text-left flex items-center"><img src="${team.team.crest}" alt="${team.team.name}" class="w-6 h-6 mr-2"> <a href="equipo.html?id=${team.team.id}" class="text-blue-500 hover:underline"> ${team.team.name} </a></td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.playedGames}</td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.won}</td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.draw}</td>`;

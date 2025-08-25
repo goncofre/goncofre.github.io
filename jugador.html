@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil del Jugador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+        }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen font-sans">
+
+    <div id="container" class="w-full max-w-md mx-auto p-4">
+        <div id="loader" class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"></div>
+            <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">Cargando perfil del jugador...</p>
+        </div>
+
+        <div id="player-card" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 hidden transition-opacity duration-500">
+            <div class="text-center">
+                <h1 id="player-name" class="text-4xl font-bold text-gray-900 dark:text-white"></h1>
+                <p id="player-nationality" class="text-lg text-gray-500 dark:text-gray-400 mt-1"></p>
+            </div>
+            
+            <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
+                <div class="flex justify-between items-center text-lg">
+                    <span class="font-semibold text-gray-600 dark:text-gray-300">Equipo Actual:</span>
+                    <span id="player-team" class="text-gray-800 dark:text-gray-100 font-medium"></span>
+                </div>
+                <div class="flex justify-between items-center text-lg">
+                    <span class="font-semibold text-gray-600 dark:text-gray-300">Posición:</span>
+                    <span id="player-position" class="text-gray-800 dark:text-gray-100 font-medium"></span>
+                </div>
+                <div class="flex justify-between items-center text-lg">
+                    <span class="font-semibold text-gray-600 dark:text-gray-300">Dorsal:</span>
+                    <span id="player-shirt-number" class="text-gray-800 dark:text-gray-100 font-medium"></span>
+                </div>
+                <div class="flex justify-between items-center text-lg">
+                    <span class="font-semibold text-gray-600 dark:text-gray-300">Fecha de Nacimiento:</span>
+                    <span id="player-birthdate" class="text-gray-800 dark:text-gray-100 font-medium"></span>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative hidden" role="alert">
+            <strong class="font-bold">¡Error!</strong>
+            <span id="error-text" class="block sm:inline"></span>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchParams = new URLSearchParams(window.location.search);
+            playerid = searchParams.get("id");
+
+            fetchPlayerData(playerid);
+        });
+
+        async function fetchPlayerData(playerid) {
+            const apiEndpoint = `https://api.football-data.org/v4/persons/${playerid}`;
+            const authToken = '95411b80d0d54248a859a01061f60d73';
+
+            const loader = document.getElementById('loader');
+            const playerCard = document.getElementById('player-card');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'GET',
+                    headers: { 'X-Auth-Token': authToken }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error ${response.status}: ${errorData.message || 'No se pudo contactar la API'}`);
+                }
+
+                const data = await response.json();
+
+                document.getElementById('player-name').textContent = data.name ?? 'Nombre no disponible';
+                document.getElementById('player-nationality').textContent = data.nationality ?? 'Nacionalidad no disponible';
+                document.getElementById('player-team').textContent = data.currentTeam?.name ?? 'Sin equipo';
+                document.getElementById('player-position').textContent = data.position ?? 'No disponible';
+                document.getElementById('player-shirt-number').textContent = data.shirtNumber ?? 'N/A';
+                document.getElementById('player-birthdate').textContent = new Date(data.dateOfBirth).toLocaleDateString('es-ES');
+
+                playerCard.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error al obtener los datos del jugador:', error);
+                errorText.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
