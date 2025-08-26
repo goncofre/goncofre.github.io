@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partidos Premier League</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0c2c4a 0%, #1d5679 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .competition-select {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: gray;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .season-info {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .matchday-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .matchday-btn {
+            background-color: #f0ad4e;
+            color: #333;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .matchday-btn:hover {
+            background-color: #ec971f;
+            transform: translateY(-3px);
+        }
+        
+        .matchday-btn.active {
+            background-color: #5cb85c;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .matches-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .match-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .match-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .match-status {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #f0ad4e;
+        }
+        
+        .match-teams {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .team {
+            text-align: center;
+            width: 40%;
+        }
+        
+        .team-logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 50%;
+            padding: 5px;
+        }
+        
+        .team-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .score {
+            font-size: 1.6rem;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        
+        .match-info {
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .loader {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+        
+        .error {
+            text-align: center;
+            color: #ff6b6b;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .matches-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .matchday-selector {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                justify-content: flex-start;
+                padding-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cargando...</h1>
+            <p>Resultados y fixtures de la temporada</p>
+        </header>
+        
+        <select id="competition" class="competition-select">
+            <option value="PL">Premier League</option>
+            <option value="BL1">Bundesliga</option>
+            <option value="DED">Eredivisie</option>
+            <option value="BSA">Campeonato Brasileiro Série A</option>
+            <option value="PD">Primera Division</option>
+            <option value="FL1">Ligue 1</option>
+            <option value="ELC">Championship</option>
+            <option value="PPL">Primeira Liga</option>
+            <option value="EC">European Championship</option>
+            <option value="SA">Serie A</option>
+        </select>
+        
+        <div class="season-info">
+            <h2>Información de la Temporada</h2>
+            <p id="total-matchdays">Número total de fechas: Cargando...</p>
+            <p id="current-matchday">Fecha actual: Cargando...</p>
+        </div>
+        
+        <div class="matchday-selector" id="matchday-selector">
+            <!-- Los botones de fechas se generarán aquí con JavaScript -->
+        </div>
+        
+        <div id="matches-container" class="matches-container">
+            <div class="loader">Cargando partidos...</div>
+        </div>
+    </div>
+
+    <script>
+        // Clave API (debes reemplazarla con tu propia clave)
+        const API_KEY = '95411b80d0d54248a859a01061f60d73';
+        const API_URL = 'https://api.football-data.org/v4';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const COMPETITION_CODE = urlParams.get('comp') || 'PL'; // Obtiene el código de la URL o usa 'PL' por defecto
+        
+        // Elementos del DOM
+        const totalMatchdaysElement = document.getElementById('total-matchdays');
+        const currentMatchdayElement = document.getElementById('current-matchday');
+        const matchdaySelectorElement = document.getElementById('matchday-selector');
+        const matchesContainerElement = document.getElementById('matches-container');
+        const competitionSelect = document.getElementById('competition');
+
+
+        // Variables de estado
+        let currentSeason = {};
+        let currentMatchday = 1;
+        let totalMatchdays = 0;
+        
+        // Función para obtener datos de la API
+        async function fetchData(url) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Auth-Token': API_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                matchesContainerElement.innerHTML = `
+                    <div class="error">
+                        Error al cargar los datos: ${error.message}
+                        <br>Nota: Necesitas una API key válida de football-data.org
+                    </div>
+                `;
+                return null;
+            }
+        }
+        
+        // Función para cargar información de la temporada
+        async function loadSeasonInfo() {
+            // Sincroniza el <select> con la competición actual
+            competitionSelect.value = COMPETITION_CODE;
+
+            const data = await fetchData(`${API_URL}/competitions/${COMPETITION_CODE}/matches`);
+            
+            if (!data) return;
+            
+            currentSeason = data;
+
+            // Actualizar títulos de la página
+            const competitionName = data.competition.name;
+            const seasonStartYear = data.matches[0].season.startDate.substring(0, 4);
+            const seasonEndYear = data.matches[0].season.endDate.substring(0, 4);
+            const headerTitle = `${competitionName} ${seasonStartYear}/${seasonEndYear}`;
+            document.querySelector('header h1').textContent = headerTitle;
+            document.title = `Partidos ${competitionName}`;
+
+            // Calcular el número total de fechas (jornadas)
+            let totalMatchesInMatchdayOne = 0;
+            for(let i=0; i < data.matches.length; i++){
+                if(data.matches[i].matchday === 1){
+                    totalMatchesInMatchdayOne++;
+                }
+            }
+
+            // Evitar división por cero si no hay partidos en la jornada 1
+            totalMatchdays = totalMatchesInMatchdayOne > 0 ? Math.round(data.resultSet.count / totalMatchesInMatchdayOne) : 0;
+            currentMatchday = data.matches[0].season.currentMatchday;
+
+            totalMatchdaysElement.textContent = `Número total de fechas: ${totalMatchdays}`;
+            currentMatchdayElement.textContent = `Fecha actual: ${currentMatchday}`;
+
+            // Generar botones de selección de fecha
+            generateMatchdayButtons();
+            
+            // Cargar partidos de la fecha actual
+            loadMatchday(currentMatchday);
+        }
+        
+        // Función para generar botones de selección de fecha
+        function generateMatchdayButtons() {
+            matchdaySelectorElement.innerHTML = '';
+            
+            for (let i = 1; i <= totalMatchdays; i++) {
+                const button = document.createElement('button');
+                button.classList.add('matchday-btn');
+                if (i === currentMatchday) {
+                    button.classList.add('active');
+                }
+                button.textContent = i;
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.matchday-btn').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    loadMatchday(i);
+                });
+                matchdaySelectorElement.appendChild(button);
+            }
+        }
+        
+        // Función para cargar partidos de una fecha específica
+        async function loadMatchday(matchday) {
+            matchesContainerElement.innerHTML = '<div class="loader">Cargando partidos...</div>';
+            
+            const data = await fetchData(`${API_URL}/competitions/${COMPETITION_CODE}/matches?matchday=${matchday}`);
+            
+            if (!data) return;
+            
+            if (data.matches && data.matches.length > 0) {
+                renderMatches(data.matches);
+            } else {
+                matchesContainerElement.innerHTML = '<div class="error">No se encontraron partidos para esta fecha.</div>';
+            }
+        }
+        
+        // Función para renderizar los partidos
+        function renderMatches(matches) {
+            matchesContainerElement.innerHTML = '';
+            
+            matches.forEach(match => {
+                const matchCard = document.createElement('div');
+                matchCard.classList.add('match-card');
+                
+                // Formatear la fecha y hora
+                const matchDate = new Date(match.utcDate);
+
+                const formattedDate = matchDate.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                const formattedTime = matchDate.toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                // Determinar el estado del partido
+                let statusText = '';
+                if (match.status === 'FINISHED') {
+                    statusText = 'Finalizado';
+                } else if (match.status === 'IN_PLAY') {
+                    statusText = 'En juego';
+                } else if (match.status === 'PAUSED') {
+                    statusText = 'Pausado';
+                } else if (match.status === 'SCHEDULED') {
+                    statusText = 'Programado';
+                } else if (match.status === 'TIMED') {
+                    statusText = 'Agendado';    
+                } else {
+                    statusText = match.status;
+                }
+                
+                matchCard.innerHTML = `
+                    <div class="match-status">${statusText}</div>
+                    <div class="match-teams">
+                        <div class="team">
+                            <img src="${match.homeTeam.crest}" alt="${match.homeTeam.name}" class="team-logo">
+                            <div class="team-name">${match.homeTeam.shortName || match.homeTeam.name}</div>
+                        </div>
+                        <div class="score">
+                            ${match.score.fullTime.home !== null ? match.score.fullTime.home : '-'} : 
+                            ${match.score.fullTime.away !== null ? match.score.fullTime.away : '-'}
+                        </div>
+                        <div class="team">
+                            <img src="${match.awayTeam.crest}" alt="${match.awayTeam.name}" class="team-logo">
+                            <div class="team-name">${match.awayTeam.shortName || match.awayTeam.name}</div>
+                        </div>
+                    </div>
+                    <div class="match-info">
+                        <div>${formattedDate}</div>
+                        <div>${formattedTime}</div>
+                    </div>
+                `;
+                
+                matchesContainerElement.appendChild(matchCard);
+            });
+        }
+        
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSeasonInfo();
+            competitionSelect.addEventListener('change', () => {
+                window.location.href = `fecha.html?comp=${competitionSelect.value}`;
+            });
+        });
+    </script>
+</body>
+</html>

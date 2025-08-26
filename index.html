@@ -40,41 +40,61 @@
         const resultsContainer = document.getElementById('results-container');
         const scoresContainer = document.getElementById('scores-container');
 
-        leagueSelect.addEventListener('change', (event) => {
-            const selectedLeague = event.target.value;
-            
-            resultsContainer.innerHTML = '<p class="text-gray-500 animate-pulse">Cargando datos...</p>';
-            scoresContainer.innerHTML = '<p class="text-gray-500 animate-pulse">Cargando datos...</p>';
+        // Al cargar la página, revisa si hay una liga en la URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const leagueFromUrl = urlParams.get('league') || "PL";
 
-            fetchLeagueData(selectedLeague);
-            fetchScoreData(selectedLeague);
+            if (leagueFromUrl) {
+                leagueSelect.value = leagueFromUrl;
+                loadDataForLeague(leagueFromUrl);
+            }
         });
 
+        // Evento para cuando el usuario cambia la selección
+        leagueSelect.addEventListener('change', (event) => {
+            const selectedLeague = event.target.value;
+            if (selectedLeague) {
+                loadDataForLeague(selectedLeague);
+                // Actualiza la URL en el navegador sin recargar la página
+                const url = new URL(window.location);
+                url.searchParams.set('league', selectedLeague);
+                window.history.pushState({}, '', url);
+            }
+        });
+
+        function loadDataForLeague(leagueCode) {
+            resultsContainer.innerHTML = '<p class="text-gray-500 animate-pulse">Cargando tabla de posiciones...</p>';
+            scoresContainer.innerHTML = '<p class="text-gray-500 animate-pulse">Cargando tabla de goleadores...</p>';
+
+            // Se ejecutan ambas peticiones en paralelo
+            fetchLeagueData(leagueCode);
+            fetchScoreData(leagueCode);
+        }
+
         async function fetchLeagueData(leagueCode) {
-            API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/standings`;
+            const API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/standings`;
 
             try {
                 const response = await fetch(API_URL, {
-                    method: 'GET',
-                    headers: {
-                        'X-Auth-Token': API_TOKEN
-                    }
+                    headers: { 'X-Auth-Token': API_TOKEN }
                 });
 
                 if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Error HTTP: ${response.status}`);
                 }
 
                 const data = await response.json();
                 displayStandings(data);
-
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Error al obtener la tabla de posiciones:', error);
+                resultsContainer.innerHTML = `<p class="text-red-500">Error al cargar la tabla: ${error.message}</p>`;
             }
         }
 
         async function fetchScoreData(leagueCode) {
-            API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/scorers`;
+            const API_URL = `https://api.football-data.org/v4/competitions/${leagueCode}/scorers`;
 
             try {
                 const response = await fetch(API_URL, {
@@ -85,14 +105,15 @@
                 });
 
                 if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Error HTTP: ${response.status}`);
                 }
 
                 const data = await response.json();
                 displayScore(data);
-
             } catch (error) {
-                console.error('Error fetching data:', error);
+                console.error('Error al obtener la tabla de goleadores:', error);
+                scoresContainer.innerHTML = `<p class="text-red-500">Error al cargar goleadores: ${error.message}</p>`;
             }
         }
 
@@ -119,7 +140,7 @@
                 standings.forEach(team => {
                     tableHtml += `<tr class="border-b border-gray-200 hover:bg-gray-100">`;
                     tableHtml += `<td class="py-3 px-6 text-left whitespace-nowrap">${team.position}</td>`;
-                    tableHtml += `<td class="py-3 px-6 text-left flex items-center"><img src="${team.team.crest}" alt="${team.team.name}" class="w-6 h-6 mr-2"> <a href="equipo.html?id=${team.team.id}" class="text-blue-500 hover:underline"> ${team.team.name} </a></td>`;
+                    tableHtml += `<td class="py-3 px-6 text-left flex items-center"><img src="${team.team.crest}" alt="${team.team.name}" class="w-6 h-6 mr-2 rounded-full object-cover"> <a href="equipo.html?id=${team.team.id}" class="text-blue-500 hover:underline"> ${team.team.name} </a></td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.playedGames}</td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.won}</td>`;
                     tableHtml += `<td class="py-3 px-6 text-left">${team.draw}</td>`;
@@ -152,17 +173,15 @@
                 tableHtml += `<th class="py-3 px-6 text-left">Goles</th>`;
                 tableHtml += `</tr></thead><tbody class="text-gray-600 text-sm font-light">`;
 
-                for(i=0;i<scorers.length;i++){
+                scorers.forEach(scorer => {
                     tableHtml += `<tr class="border-b border-gray-200 hover:bg-gray-100">`;
-                    tableHtml += `<td class="py-3 px-6 text-left">${scorers[i].player.firstName} ${scorers[i].player.lastName}</td>`;
-                    tableHtml += `<td class="py-3 px-6 text-left">${scorers[i].team.name}</td>`;
-                    tableHtml += `<td class="py-3 px-6 text-left">${scorers[i].goals}</td>`;
-                    
+                    tableHtml += `<td class="py-3 px-6 text-left"><a href="jugador.html?id=${scorer.player.id}" class="text-blue-500 hover:underline">${scorer.player.name}</a></td>`;
+                    tableHtml += `<td class="py-3 px-6 text-left">${scorer.team.name}</td>`;
+                    tableHtml += `<td class="py-3 px-6 text-left font-semibold">${scorer.goals}</td>`;
                     tableHtml += `</tr>`;
-                }
+                });
 
                 scoresContainer.innerHTML = tableHtml;
-
             } else {
                 scoresContainer.innerHTML = `<p class="text-gray-500">No se encontraron datos para la liga seleccionada.</p>`;
             }
