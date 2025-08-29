@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partidos de la Champions League</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos para la barra de desplazamiento en navegadores Webkit */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 id="competition-name" class="text-4xl md:text-5xl font-bold text-blue-400">Champions League</h1>
+            <p id="season-dates" class="text-lg text-gray-400">Temporada</p>
+        </header>
+
+        <!-- Indicador de Carga -->
+        <div id="loader" class="text-center py-20">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto"></div>
+            <p class="mt-4 text-lg text-gray-300">Cargando partidos...</p>
+        </div>
+
+        <!-- Contenedor Principal (inicialmente oculto) -->
+        <div id="main-content" class="hidden">
+            <!-- Navegación de Fases -->
+            <nav id="stage-nav" class="flex border-b border-gray-700 overflow-x-auto no-scrollbar mb-6">
+                <!-- Las pestañas se insertarán aquí dinámicamente -->
+            </nav>
+
+            <!-- Contenedor de Partidos -->
+            <main id="matches-container" class="space-y-6">
+                <!-- Los partidos se insertarán aquí -->
+            </main>
+        </div>
+
+        <!-- Mensaje de Error -->
+        <div id="error-message" class="hidden bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center" role="alert">
+            <strong class="font-bold">¡Vaya!</strong>
+            <span id="error-text" class="block sm:inline"></span>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN ---
+        const API_KEY = '95411b80d0d54248a859a01061f60d73'; // ⚠️ Reemplaza con tu token
+        const API_URL = 'https://api.football-data.org/v4';
+        const COMPETITION_CODE = 'CL'; // Código para la UEFA Champions League
+
+        // --- REFERENCIAS AL DOM ---
+        const loader = document.getElementById('loader');
+        const mainContent = document.getElementById('main-content');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const stageNav = document.getElementById('stage-nav');
+        const matchesContainer = document.getElementById('matches-container');
+        const competitionNameEl = document.getElementById('competition-name');
+        const seasonDatesEl = document.getElementById('season-dates');
+
+        // --- ESTADO DE LA APLICACIÓN ---
+        let allMatchesData = {}; // Almacenará los partidos agrupados por fase
+
+        // Mapeo para traducir los nombres de las fases de la API a español
+        const stageTranslations = {
+            'GROUP_STAGE': 'Fase de Grupos',
+            'LAST_16': 'Octavos de Final',
+            'QUARTER_FINALS': 'Cuartos de Final',
+            'SEMI_FINALS': 'Semifinales',
+            'FINAL': 'Final',
+            'PLAY_OFFS': 'Play-offs'
+        };
+
+        // Orden deseado para las fases
+        const stageOrder = ['GROUP_STAGE', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
+
+        // --- LÓGICA PRINCIPAL ---
+        document.addEventListener('DOMContentLoaded', fetchAllMatches);
+
+        async function fetchAllMatches() {
+            try {
+                const response = await fetch(`${API_URL}/competitions/${COMPETITION_CODE}/matches`, {
+                    headers: { 'X-Auth-Token': API_KEY }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                processAndRenderData(data);
+
+            } catch (error) {
+                console.error('Error al obtener los partidos:', error);
+                errorText.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function processAndRenderData(data) {
+            // Actualizar información de la competición
+            competitionNameEl.textContent = data.competition.name;
+            seasonDatesEl.textContent = `Temporada ${data.filters.season}`;
+
+            // Agrupar partidos por fase
+            allMatchesData = data.matches.reduce((acc, match) => {
+                const stage = match.stage;
+                if (!acc[stage]) {
+                    acc[stage] = [];
+                }
+                acc[stage].push(match);
+                return acc;
+            }, {});
+
+            // Obtener y ordenar las fases disponibles
+            const availableStages = Object.keys(allMatchesData).sort((a, b) => {
+                return stageOrder.indexOf(a) - stageOrder.indexOf(b);
+            });
+
+            renderStageNavigation(availableStages);
+            if (availableStages.length > 0) {
+                renderMatchesForStage(availableStages[0]); // Mostrar la primera fase por defecto
+            }
+
+            mainContent.classList.remove('hidden');
+        }
+
+        function renderStageNavigation(stages) {
+            stageNav.innerHTML = '';
+            stages.forEach(stage => {
+                const tab = document.createElement('button');
+                tab.dataset.stage = stage;
+                tab.textContent = stageTranslations[stage] || stage.replace('_', ' ');
+                tab.className = 'py-4 px-6 text-center font-semibold text-gray-400 hover:text-white focus:outline-none whitespace-nowrap';
+                tab.onclick = () => renderMatchesForStage(stage);
+                stageNav.appendChild(tab);
+            });
+        }
+
+        function renderMatchesForStage(stage) {
+            // Actualizar la pestaña activa
+            document.querySelectorAll('#stage-nav button').forEach(btn => {
+                if (btn.dataset.stage === stage) {
+                    btn.classList.add('text-white', 'border-b-2', 'border-blue-500');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('text-white', 'border-b-2', 'border-blue-500');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+
+            matchesContainer.innerHTML = '';
+            const matches = allMatchesData[stage];
+
+            if (stage === 'GROUP_STAGE') {
+                // Para la fase de grupos, los agrupamos por su grupo (A, B, C...)
+                const matchesByGroup = matches.reduce((acc, match) => {
+                    const groupName = match.group;
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(match);
+                    return acc;
+                }, {});
+
+                Object.keys(matchesByGroup).sort().forEach(groupName => {
+                    const groupTitle = document.createElement('h2');
+                    groupTitle.textContent = groupName;
+                    groupTitle.className = 'text-2xl font-bold text-blue-300 mt-8 border-b border-gray-700 pb-2';
+                    matchesContainer.appendChild(groupTitle);
+                    matchesByGroup[groupName].forEach(match => matchesContainer.appendChild(createMatchCard(match)));
+                });
+
+            } else {
+                // Para las otras fases, simplemente listamos los partidos
+                matches.forEach(match => matchesContainer.appendChild(createMatchCard(match)));
+            }
+        }
+
+        function createMatchCard(match) {
+            const card = document.createElement('div');
+            card.className = 'bg-gray-800 rounded-lg p-4 flex items-center justify-between shadow-lg';
+
+            const homeTeam = `
+                <div class="flex items-center w-2/5">
+                    <span class="text-lg md:text-xl font-semibold text-right flex-grow mr-4">${match.homeTeam.name}</span>
+                    <img src="${match.homeTeam.crest}" alt="${match.homeTeam.name}" class="w-8 h-8 md:w-10 md:h-10 object-contain">
+                </div>`;
+
+            const score = `
+                <div class="text-center w-1/5">
+                    <div class="text-2xl md:text-3xl font-bold">
+                        ${match.status === 'FINISHED' ? `${match.score.fullTime.home} - ${match.score.fullTime.away}` : new Date(match.utcDate).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}
+                    </div>
+                    <div class="text-xs text-gray-400 uppercase">${match.status === 'FINISHED' ? 'Finalizado' : new Date(match.utcDate).toLocaleDateString('es-ES')}</div>
+                </div>`;
+
+            const awayTeam = `
+                <div class="flex items-center w-2/5">
+                    <img src="${match.awayTeam.crest}" alt="${match.awayTeam.name}" class="w-8 h-8 md:w-10 md:h-10 object-contain mr-4">
+                    <span class="text-lg md:text-xl font-semibold">${match.awayTeam.name}</span>
+                </div>`;
+
+            card.innerHTML = homeTeam + score + awayTeam;
+            return card;
+        }
+
+    </script>
+</body>
+</html>
